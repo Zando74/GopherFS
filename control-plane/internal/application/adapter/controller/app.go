@@ -28,7 +28,7 @@ func Run() {
 
 	// should register services here
 	// ...
-	pb.RegisterFileUploadServiceServer(g, NewFileUploadServer())
+	pb.RegisterFileUploadServiceServer(g, &FileUploaderver{})
 
 	listen, err := net.Listen("tcp", config.GRPC.Port)
 	if err != nil {

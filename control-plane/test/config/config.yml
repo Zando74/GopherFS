@@ -9,4 +9,5 @@ grpc:
   port: ":50050"
 
 file_storage:
-  chunk_size: 1 # in MB
+  chunk_size: 4 # in MB
+  saga_ttl: 30 # in seconds

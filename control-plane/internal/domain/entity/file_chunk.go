@@ -1,10 +1,10 @@
 package entity
 
-import "github.com/Zando74/GopherFS/control-plane/internal/domain/valueobject"
+import "github.com/Zando74/GopherFS/control-plane/internal/domain/value_object"
 
 type FileChunk struct {
-	Filename       string
+	FileID         string
 	SequenceNumber string
-	ChunkID        valueobject.ChunkHash
-	ChunkData      valueobject.Chunk
+	ChunkID        value_object.ChunkHash
+	ChunkData      value_object.Chunk
 }

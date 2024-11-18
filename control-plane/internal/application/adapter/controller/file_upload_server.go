@@ -7,33 +7,32 @@ import (
 	"github.com/Zando74/GopherFS/control-plane/config"
 	"github.com/Zando74/GopherFS/control-plane/internal/application/adapter/grpc"
 	"github.com/Zando74/GopherFS/control-plane/internal/application/adapter/repository"
+	"github.com/Zando74/GopherFS/control-plane/internal/domain/coordinator"
 	"github.com/Zando74/GopherFS/control-plane/internal/domain/usecase"
 	"github.com/Zando74/GopherFS/control-plane/logger"
 )
 
 var (
-	fileChunkRepositoryImpl = &repository.FileChunkRepository{}
+	fileChunkRepositoryImpl    = &repository.FileChunkRepository{}
+	fileMetadataRepositoryImpl = &repository.FileMetadataRepository{}
 )
 
 type FileUploaderver struct {
 	grpc.UnimplementedFileUploadServiceServer
-	splitFileStream usecase.SplitFileStreamUseCase
-	wg              sync.WaitGroup
+	splitBatchToChunkUseCase usecase.SplitBatchToChunkUseCase
+	startFileStreamSaga      usecase.StartFileUploadSagaUseCase
+	wg                       sync.WaitGroup
 }
 
-func NewFileUploadServer() *FileUploaderver {
-	return &FileUploaderver{
-		splitFileStream: usecase.SplitFileStreamUseCase{
-			FileChunkRepository: fileChunkRepositoryImpl,
-		},
-	}
-}
-
-func (fs *FileUploaderver) executeSplitFileStreamUseCase(filename string, fileBatchID uint32, batch []byte) {
+func (fs *FileUploaderver) executeSplitFileStreamUseCase(
+	filename string,
+	fileBatchID uint32,
+	batch []byte,
+) {
 	fs.wg.Add(1)
 	go func(filename string, fileBatchID uint32, batch []byte) {
 		defer fs.wg.Done()
-		fs.splitFileStream.SplitFileBatch(filename, fileBatchID, batch)
+		fs.splitBatchToChunkUseCase.Execute(filename, fileBatchID, batch)
 	}(filename, fileBatchID, batch)
 }
 
@@ -44,11 +43,21 @@ func (fs *FileUploaderver) UploadFile(stream grpc.FileUploadService_UploadFileSe
 	var batchCpt uint32 = 0
 	filename := ""
 	var buffer []byte
+	var uploadSagaCoordinator *coordinator.UploadSagaCoordinator
 	for {
 		req, err := stream.Recv()
 
 		if filename == "" {
 			filename = req.GetFileName()
+			uploadSagaCoordinator = coordinator.NewUploadSagaCoordinator(fileChunkRepositoryImpl, fileMetadataRepositoryImpl, filename, filename)
+			fs.splitBatchToChunkUseCase = usecase.SplitBatchToChunkUseCase{
+				UploadSagaCoordinator: uploadSagaCoordinator,
+			}
+			fs.startFileStreamSaga = usecase.StartFileUploadSagaUseCase{
+				UploadSagaCoordinator: uploadSagaCoordinator,
+			}
+			go func() { uploadSagaCoordinator.StartSaga() }()
+
 		}
 
 		if err == io.EOF {
@@ -61,7 +70,7 @@ func (fs *FileUploaderver) UploadFile(stream grpc.FileUploadService_UploadFileSe
 
 		if err != nil {
 			logger.Error(err)
-			// should think about a rollback strategy
+			uploadSagaCoordinator.RollbackSaga()
 			break
 		}
 
@@ -79,6 +88,8 @@ func (fs *FileUploaderver) UploadFile(stream grpc.FileUploadService_UploadFileSe
 		buffer = []byte{}
 	}
 	fs.wg.Wait()
+
+	uploadSagaCoordinator.StartWaitingForConfirmations()
 
 	return stream.SendAndClose(&grpc.FileUploadResponse{FileName: filename, Size: fileSize, Message: "OK"})
 

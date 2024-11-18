@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -31,6 +32,7 @@ type (
 
 	FileStorage struct {
 		Chunk_size uint32 `yaml:"chunk_size"`
+		Saga_ttl   uint32 `yaml:"saga_ttl"`
 	}
 
 	Log struct {
@@ -41,7 +43,17 @@ type (
 func NewConfig() *Config {
 	cfg := &Config{}
 
-	configPath, err := filepath.Abs("./config/config.yml")
+	configPath := os.Getenv("CONFIG_PATH")
+	if configPath == "" {
+		// Définir un chemin par défaut si la variable d'environnement n'est pas définie
+		configPath, _ = filepath.Abs("./config/config.yml")
+	}
+
+	absConfigPath, err := filepath.Abs(configPath)
+	if err != nil {
+		log.Fatalf("failed to get absolute path: %s", err)
+	}
+	err = cleanenv.ReadConfig(absConfigPath, cfg)
 	if err != nil {
 		log.Fatalf("failed to get absolute path: %s", err)
 	}

@@ -10,3 +10,4 @@ grpc:
 
 file_storage:
   chunk_size: 64 # in MB
+  saga_ttl: 3600 # in seconds
