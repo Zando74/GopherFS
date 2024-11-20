@@ -1,8 +1,9 @@
-package entity
+package saga
 
 import (
 	"sync"
-	"time"
+
+	saga_repository "github.com/Zando74/GopherFS/control-plane/internal/domain/saga/repository"
 )
 
 type Confirmation byte
@@ -10,7 +11,6 @@ type Confirmation byte
 type SagaStep interface {
 	Transaction() error
 	Rollback() error
-	Start()
 	ExpectConfirmation()
 	StartWaitingForConfirmations()
 	IsStarted() bool
@@ -24,16 +24,12 @@ type SagaStep interface {
 }
 
 type ConcreteSagaStep struct {
-	Status            SagaState
-	ConfirmationsPool []Confirmation
-	Mu                sync.Mutex
-	TTL               uint32
-}
-
-func (s *ConcreteSagaStep) Start() {
-	s.Mu.Lock()
-	defer s.Mu.Unlock()
-	s.Status = Pending
+	Status                SagaState
+	ConfirmationsPool     []Confirmation
+	Mu                    sync.Mutex
+	StatusChannel         chan SagaState
+	TTL                   uint32
+	SagaInformationLogger saga_repository.SagaInformationRepository
 }
 
 func (s *ConcreteSagaStep) ExpectConfirmation() {
@@ -52,6 +48,10 @@ func (s *ConcreteSagaStep) StartWaitingForConfirmations() {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 	s.Status = WaitingForConfirmation
+	go func() {
+		s.StatusChannel <- WaitingForConfirmation
+	}()
+
 }
 
 func (s *ConcreteSagaStep) IsStarted() bool {
@@ -83,8 +83,10 @@ func (s *ConcreteSagaStep) SetTTL(ttl uint32) {
 }
 
 func (s *ConcreteSagaStep) DecreaseTTL() {
-	time.Sleep(1 * time.Second)
 	s.TTL--
+	if s.TTL <= 0 {
+		s.Fail()
+	}
 }
 
 func (s *ConcreteSagaStep) IsOverTTL() bool {
@@ -95,4 +97,9 @@ func (s *ConcreteSagaStep) Fail() {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 	s.Status = Failed
+
+	go func() {
+		s.StatusChannel <- Failed
+	}()
+
 }

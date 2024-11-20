@@ -17,7 +17,7 @@ protoc:
 
 .PHONY: test
 test-uc:
-	CONFIG_PATH=$(TEST_CONFIG_PATH) go test ./test/usecase/
+	CONFIG_PATH=$(TEST_CONFIG_PATH) go test -v ./test/usecase/
 
 .PHONY: run-dev
 

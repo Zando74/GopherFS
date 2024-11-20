@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  control-plane-1:
+    build:
+      context: ../../control-plane
+      dockerfile: app.Dockerfile
+    ports:
+      - "50050:50050"
+    environment:
+      - NODE_ID=control-plane-1
+      - FOLLOWERS=control-plane-2,control-plane-3
+    depends_on:
+      - control-plane-2
+      - control-plane-3
+
+  control-plane-2:
+    build:
+      context: ../../control-plane
+      dockerfile: app.Dockerfile
+    ports:
+      - "50051:50050"
+    environment:
+      - NODE_ID=control-plane-2
+      - FOLLOWERS=control-plane-1,control-plane-3
+
+  control-plane-3:
+    build:
+      context: ../../control-plane
+      dockerfile: app.Dockerfile
+    ports:
+      - "50052:50050"
+    environment:
+      - NODE_ID=control-plane-3
+      - FOLLOWERS=control-plane-1,control-plane-2

@@ -3,24 +3,12 @@ package test
 import (
 	"testing"
 
-	"github.com/Zando74/GopherFS/control-plane/internal/domain/coordinator"
 	"github.com/Zando74/GopherFS/control-plane/internal/domain/usecase"
-	mock_repository "github.com/Zando74/GopherFS/control-plane/test/mock/repository"
 )
 
 func TestSplitFileStreamUseCase(t *testing.T) {
 
-	var fileChunkTestRepository = &mock_repository.FileChunkRepositoryMock{}
-	var uploadSagaCoordinator = coordinator.NewUploadSagaCoordinator(
-		fileChunkTestRepository,
-		nil,
-		"test",
-		"test",
-	)
-
-	var splitBatchToChunkUseCase = &usecase.SplitBatchToChunkUseCase{
-		UploadSagaCoordinator: uploadSagaCoordinator,
-	}
+	splitBatchToChunkUseCase, uploadSagaCoordinator, fileChunkTestRepository := GenerateFileUploadSagaUseCase("test", "test")
 
 	// Generate a 60MB byte array
 	data := make([]byte, 60*1024*1024)
@@ -68,16 +56,7 @@ func TestSplitFileStreamUseCase(t *testing.T) {
 
 func TestSplitFileStreamUseCase_EmptyBatch(t *testing.T) {
 
-	var fileChunkTestRepository = &mock_repository.FileChunkRepositoryMock{}
-	var uploadSagaCoordinator = coordinator.NewUploadSagaCoordinator(
-		fileChunkTestRepository,
-		nil,
-		"test",
-		"test",
-	)
-	var splitBatchToChunkUseCase = &usecase.SplitBatchToChunkUseCase{
-		UploadSagaCoordinator: uploadSagaCoordinator,
-	}
+	splitBatchToChunkUseCase, uploadSagaCoordinator, fileChunkTestRepository := GenerateFileUploadSagaUseCase("test_empty", "test_empty")
 
 	// Generate an empty byte array
 	data := make([]byte, 0)

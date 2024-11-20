@@ -2,23 +2,35 @@ package upload_saga
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/Zando74/GopherFS/control-plane/config"
 	"github.com/Zando74/GopherFS/control-plane/internal/domain/entity"
 	"github.com/Zando74/GopherFS/control-plane/internal/domain/repository"
+	"github.com/Zando74/GopherFS/control-plane/internal/domain/saga"
+	saga_entity "github.com/Zando74/GopherFS/control-plane/internal/domain/saga/entity"
+	saga_repository "github.com/Zando74/GopherFS/control-plane/internal/domain/saga/repository"
 	"github.com/Zando74/GopherFS/control-plane/logger"
 )
 
+var (
+	log = logger.LoggerSingleton.GetInstance()
+)
+
 type FileChunkSaveConfirmation struct {
-	entity.ConcreteSagaStep
+	saga.ConcreteSagaStep
 	FileChunkSaver repository.FileChunkRepository
 	FileMetadata   *entity.FileMetadata
 }
 
-func NewFileChunkSaveConfirmation(fileChunkSaver repository.FileChunkRepository, fileMetadata *entity.FileMetadata) *FileChunkSaveConfirmation {
+func NewFileChunkSaveConfirmation(fileChunkSaver repository.FileChunkRepository, fileMetadata *entity.FileMetadata, sagaInformationRepository saga_repository.SagaInformationRepository) *FileChunkSaveConfirmation {
 	return &FileChunkSaveConfirmation{
 		FileChunkSaver: fileChunkSaver,
 		FileMetadata:   fileMetadata,
+		ConcreteSagaStep: saga.ConcreteSagaStep{
+			SagaInformationLogger: sagaInformationRepository,
+			StatusChannel:         make(chan saga.SagaState),
+		},
 	}
 }
 
@@ -34,12 +46,19 @@ func (f *FileChunkSaveConfirmation) ProcessChunk(fileChunk entity.FileChunk) err
 	}
 
 	f.Mu.Lock()
+	if f.FileMetadata.FileSize == 0 {
+		f.SagaInformationLogger.SaveSagaInformation(saga_entity.SagaInformation{
+			FileID:           f.FileMetadata.FileID,
+			StepName:         saga_entity.FileChunkSave,
+			SagaName:         saga_entity.UploadSaga,
+			CreatedAt:        time.Now().Unix(),
+			Status:           saga_entity.Pending,
+			RecoveryStrategy: saga_entity.RollBack,
+		})
+	}
 	f.FileMetadata.FileSize += int64(len(fileChunk.ChunkData))
 	f.Mu.Unlock()
 	f.ConcreteSagaStep.ExpectConfirmation()
-
-	logger := logger.LoggerSingleton.GetInstance()
-	logger.Debug("Processed chunk: ", fileChunk.SequenceNumber, " Current Size processed: ", f.FileMetadata.FileSize)
 
 	return nil
 }
@@ -53,26 +72,35 @@ func (f *FileChunkSaveConfirmation) UpdateChunkLocationInMetadata(fileChunkLocat
 
 func (f *FileChunkSaveConfirmation) Transaction() error {
 	f.SetTTL(config.ConfigSingleton.GetInstance().FileStorage.Saga_ttl)
-	f.Start()
+
+	log.Info(logger.StartingFileUploadSagaStepMessage, saga_entity.FileChunkSave, f.FileMetadata.FileID)
+	tick := time.NewTicker(time.Second)
+	defer tick.Stop()
 	for {
-		f.DecreaseTTL()
-		if f.IsWaitingForConfirmations() {
-			if f.NoPendingConfirmation() {
-				return nil
+		select {
+		case <-tick.C:
+			f.DecreaseTTL()
+		case status := <-f.StatusChannel:
+			if status == saga.Failed {
+				log.Info(logger.FailedFileUploadSagaStepMessage, saga_entity.FileChunkSave, f.FileMetadata.FileID)
+				f.SagaInformationLogger.MarkSagaStepAsFailed(f.FileMetadata.FileID)
+				return fmt.Errorf("Canceled")
 			}
-		}
-
-		if f.IsFailed() {
-			return fmt.Errorf("Canceled")
-		}
-
-		if f.IsOverTTL() {
-			return fmt.Errorf("TTL expired")
+		default:
+			if f.IsWaitingForConfirmations() {
+				if f.NoPendingConfirmation() {
+					log.Info(logger.FinishedFileUploadSagaStepMessage, saga_entity.FileChunkSave, f.FileMetadata.FileID)
+					f.SagaInformationLogger.MarkSagaStepAsDone(f.FileMetadata.FileID)
+					return nil
+				}
+			}
 		}
 	}
 }
 
 func (f *FileChunkSaveConfirmation) Rollback() error {
+	log.Info(logger.RecoveringFileUploadSagaStepSagaMessage, saga_entity.FileChunkSave, f.FileMetadata.FileID)
 	f.FileChunkSaver.DeleteAllFilesChunks(f.FileMetadata.FileID)
+	f.SagaInformationLogger.MarkSagaStepAsFailed(f.FileMetadata.FileID)
 	return nil
 }

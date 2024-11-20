@@ -1,4 +1,4 @@
-package entity
+package saga
 
 type SagaState int
 
@@ -11,7 +11,7 @@ const (
 )
 
 func (s SagaState) String() string {
-	return []string{"Initialization", "Pending", "Done", "Failed"}[s]
+	return []string{"Initialization", "Pending", "WaitingForConfirmation", "Done", "Failed"}[s]
 }
 
 type Saga struct {

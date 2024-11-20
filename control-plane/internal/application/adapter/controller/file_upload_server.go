@@ -4,17 +4,10 @@ import (
 	"io"
 	"sync"
 
-	"github.com/Zando74/GopherFS/control-plane/config"
 	"github.com/Zando74/GopherFS/control-plane/internal/application/adapter/grpc"
-	"github.com/Zando74/GopherFS/control-plane/internal/application/adapter/repository"
-	"github.com/Zando74/GopherFS/control-plane/internal/domain/coordinator"
+	"github.com/Zando74/GopherFS/control-plane/internal/domain/saga/coordinator"
 	"github.com/Zando74/GopherFS/control-plane/internal/domain/usecase"
-	"github.com/Zando74/GopherFS/control-plane/logger"
-)
-
-var (
-	fileChunkRepositoryImpl    = &repository.FileChunkRepository{}
-	fileMetadataRepositoryImpl = &repository.FileMetadataRepository{}
+	"github.com/google/uuid"
 )
 
 type FileUploaderver struct {
@@ -37,8 +30,7 @@ func (fs *FileUploaderver) executeSplitFileStreamUseCase(
 }
 
 func (fs *FileUploaderver) UploadFile(stream grpc.FileUploadService_UploadFileServer) error {
-	logger := logger.LoggerSingleton.GetInstance()
-	config := config.ConfigSingleton.GetInstance()
+
 	var fileSize uint32 = 0
 	var batchCpt uint32 = 0
 	filename := ""
@@ -49,7 +41,14 @@ func (fs *FileUploaderver) UploadFile(stream grpc.FileUploadService_UploadFileSe
 
 		if filename == "" {
 			filename = req.GetFileName()
-			uploadSagaCoordinator = coordinator.NewUploadSagaCoordinator(fileChunkRepositoryImpl, fileMetadataRepositoryImpl, filename, filename)
+			uploadSagaCoordinator = coordinator.NewUploadSagaCoordinator(
+				fileChunkRepositoryImpl,
+				fileMetadataRepositoryImpl,
+				fileReplicationRequestImpl,
+				sagaInformationRepositoryImpl,
+				uuid.New().String(), // generate a new UUID for the ID
+				filename,
+			)
 			fs.splitBatchToChunkUseCase = usecase.SplitBatchToChunkUseCase{
 				UploadSagaCoordinator: uploadSagaCoordinator,
 			}
@@ -69,7 +68,7 @@ func (fs *FileUploaderver) UploadFile(stream grpc.FileUploadService_UploadFileSe
 		}
 
 		if err != nil {
-			logger.Error(err)
+			log.Error(err)
 			uploadSagaCoordinator.RollbackSaga()
 			break
 		}
@@ -77,7 +76,7 @@ func (fs *FileUploaderver) UploadFile(stream grpc.FileUploadService_UploadFileSe
 		batch := req.GetBatch()
 		buffer = append(buffer, batch...)
 
-		if len(buffer) < int(config.FileStorage.Chunk_size) {
+		if len(buffer) < int(cfg.FileStorage.Chunk_size) {
 			continue
 		}
 

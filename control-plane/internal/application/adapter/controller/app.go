@@ -1,11 +1,7 @@
 package controller
 
 import (
-	"context"
 	"net"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/Zando74/GopherFS/control-plane/config"
 	"github.com/Zando74/GopherFS/control-plane/logger"
@@ -13,46 +9,55 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	pb "github.com/Zando74/GopherFS/control-plane/internal/application/adapter/grpc"
+	"github.com/Zando74/GopherFS/control-plane/internal/application/adapter/repository"
 )
 
-func Run() {
-	logger := logger.LoggerSingleton.GetInstance()
-	config := config.ConfigSingleton.GetInstance()
+var (
+	cfg                           = config.ConfigSingleton.GetInstance()
+	fileChunkRepositoryImpl       = &repository.FileChunkRepository{}
+	fileMetadataRepositoryImpl    = &repository.FileMetadataRepository{}
+	fileReplicationRequestImpl    = &repository.FileReplicationRequestRepository{}
+	sagaInformationRepositoryImpl = repository.NewSagaInformationRepository()
+	log                           = logger.LoggerSingleton.GetInstance()
+)
 
-	logger.Info("Running application")
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+type Controller struct {
+	IsLeader   bool
+	grpcServer *grpc.Server
+	stopSignal chan bool
+}
 
-	g := grpc.NewServer()
-	reflection.Register(g)
+func (c *Controller) Shutdown() {
+	c.stopSignal <- true
+}
 
-	// should register services here
-	// ...
-	pb.RegisterFileUploadServiceServer(g, &FileUploaderver{})
+func (c *Controller) OnLeaderElection() {
+	c.IsLeader = true
+	logger.LoggerSingleton.GetInstance().Info("Check pending saga")
+	ProcessPendingSagaAtInitController := &ProcessPendingSagaAtInitController{}
+	ProcessPendingSagaAtInitController.Run()
+}
 
-	listen, err := net.Listen("tcp", config.GRPC.Port)
+func (c *Controller) Run() {
+	log.Info(logger.RunningApplicationMessage)
+
+	c.grpcServer = grpc.NewServer()
+	reflection.Register(c.grpcServer)
+
+	pb.RegisterFileUploadServiceServer(c.grpcServer, &FileUploaderver{})
+
+	listen, err := net.Listen("tcp", cfg.GRPC.Port)
 	if err != nil {
-		logger.Fatal(err)
+		log.Fatal(err)
 	}
 
-	interrupt := make(chan os.Signal, 1)
-	shutdownSignals := []os.Signal{
-		os.Interrupt,
-		syscall.SIGTERM,
-		syscall.SIGINT,
-		syscall.SIGQUIT,
-	}
-	signal.Notify(interrupt, shutdownSignals...)
 	go func(g *grpc.Server) {
-		logger.Info("setGRPC - gRPC server started on " + config.GRPC.Port)
 		if err := g.Serve(listen); err != nil {
-			logger.Fatal(err)
+			log.Fatal(err)
 		}
-	}(g)
-	select {
-	case killSignal := <-interrupt:
-		logger.Debug("Got ", killSignal)
-	case <-ctx.Done():
-	}
+	}(c.grpcServer)
 
+	<-c.stopSignal
+	log.Debug("Shutting down gRPC server")
+	c.grpcServer.Stop()
 }

@@ -56,12 +56,24 @@ func (l *Logger) Debug(message interface{}, args ...interface{}) {
 	l.msg("debug", message, args...)
 }
 
+func (l *Logger) Debugf(message string, args ...interface{}) {
+	l.logger.Debug().Msgf(message, args...)
+}
+
 func (l *Logger) Info(message string, args ...interface{}) {
 	l.log(message, args...)
 }
 
+func (l *Logger) Infof(message string, args ...interface{}) {
+	l.logger.Info().Msgf(message, args...)
+}
+
 func (l *Logger) Warn(message string, args ...interface{}) {
 	l.log(message, args...)
+}
+
+func (l *Logger) Warningf(message string, args ...interface{}) {
+	l.logger.Warn().Msgf(message, args...)
 }
 
 func (l *Logger) Error(message interface{}, args ...interface{}) {
@@ -70,6 +82,10 @@ func (l *Logger) Error(message interface{}, args ...interface{}) {
 	}
 
 	l.msg("error", message, args...)
+}
+
+func (l *Logger) Errorf(message string, args ...interface{}) {
+	l.logger.Error().Msgf(message, args...)
 }
 
 func (l *Logger) Fatal(message interface{}, args ...interface{}) {

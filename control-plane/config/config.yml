@@ -2,6 +2,12 @@ app:
   name: "gopherFS-control-plane"
   version: "0.0.1"
 
+consensus:
+  node_id: "control-plane-1"
+  followers: []
+  raft_port: 1111
+  raft_dir: "/tmp/raft"
+
 log:
   log_level: "debug"
 

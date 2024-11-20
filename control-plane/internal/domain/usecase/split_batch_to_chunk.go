@@ -5,13 +5,13 @@ import (
 	"sync"
 
 	"github.com/Zando74/GopherFS/control-plane/config"
-	"github.com/Zando74/GopherFS/control-plane/internal/domain/coordinator"
 	"github.com/Zando74/GopherFS/control-plane/internal/domain/factory"
+	"github.com/Zando74/GopherFS/control-plane/internal/domain/repository"
 )
 
 type SplitBatchToChunkUseCase struct {
 	FileChunkFactory      factory.FileChunkFactory
-	UploadSagaCoordinator *coordinator.UploadSagaCoordinator
+	UploadSagaCoordinator repository.SagaCoordinator
 }
 
 func (s *SplitBatchToChunkUseCase) Execute(

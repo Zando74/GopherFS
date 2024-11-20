@@ -9,11 +9,12 @@ import (
 )
 
 type FileChunkRepositoryMock struct {
-	files []*entity.FileChunk
+	Files   []*entity.FileChunk
+	Deleted bool
 }
 
 func (fcrm *FileChunkRepositoryMock) SaveFileChunk(chunk *entity.FileChunk, onSuccess func(fileChunkLocation entity.ChunkLocations)) error {
-	fcrm.files = append(fcrm.files, chunk)
+	fcrm.Files = append(fcrm.Files, chunk)
 	go func() {
 		time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
 		onSuccess(entity.ChunkLocations{
@@ -27,10 +28,14 @@ func (fcrm *FileChunkRepositoryMock) SaveFileChunk(chunk *entity.FileChunk, onSu
 }
 
 func (fcrm *FileChunkRepositoryMock) DeleteAllFilesChunks(fileID string) error {
-	fcrm.files = nil
+	fcrm.Files = nil
+	fcrm.Deleted = true
 	return nil
 }
 
 func (fcrm *FileChunkRepositoryMock) GetFiles() []*entity.FileChunk {
-	return fcrm.files
+	if fcrm.Deleted {
+		return nil
+	}
+	return fcrm.Files
 }

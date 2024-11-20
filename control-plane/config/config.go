@@ -16,6 +16,7 @@ type (
 		once        sync.Once
 		instance    *Config
 		App         `yaml:"app"`
+		Consensus   `yaml:"consensus"`
 		GRPC        `yaml:"grpc"`
 		FileStorage `yaml:"file_storage"`
 		Log         `yaml:"log"`
@@ -24,6 +25,13 @@ type (
 	App struct {
 		Name    string `yaml:"name"`
 		Version string `yaml:"version"`
+	}
+
+	Consensus struct {
+		NodeId    string   `yaml:"node_id" env:"NODE_ID"`
+		Followers []string `yaml:"followers" env:"FOLLOWERS"`
+		RaftPort  uint16   `yaml:"raft_port"`
+		RaftDir   string   `yaml:"raft_dir"`
 	}
 
 	GRPC struct {
@@ -44,18 +52,18 @@ func NewConfig() *Config {
 	cfg := &Config{}
 
 	configPath := os.Getenv("CONFIG_PATH")
+
 	if configPath == "" {
-		// Définir un chemin par défaut si la variable d'environnement n'est pas définie
-		configPath, _ = filepath.Abs("./config/config.yml")
+		log.Fatalf("config path is not set")
 	}
 
 	absConfigPath, err := filepath.Abs(configPath)
 	if err != nil {
-		log.Fatalf("failed to get absolute path: %s", err)
+		log.Fatalf("failed to get absolute path: %s, path: %s", err, configPath)
 	}
 	err = cleanenv.ReadConfig(absConfigPath, cfg)
 	if err != nil {
-		log.Fatalf("failed to get absolute path: %s", err)
+		log.Fatalf("failed to get absolute path: %s, path: %s", err, configPath)
 	}
 	err = cleanenv.ReadConfig(configPath, cfg)
 	if err != nil {
@@ -80,11 +88,14 @@ func (cfg *Config) GetInstance() *Config {
 }
 
 func (cfg *Config) String() string {
-	return fmt.Sprintf("App: %s, Version: %s, GRPC Port: %s, Chunk Size (MB): %d",
+	return fmt.Sprintf("App: %s, Version: %s, GRPC Port: %s, Chunk Size (MB): %d, Node ID: %s, followers: %v",
 		cfg.App.Name,
 		cfg.App.Version,
 		cfg.GRPC.Port,
-		cfg.FileStorage.Chunk_size)
+		cfg.FileStorage.Chunk_size,
+		cfg.Consensus.NodeId,
+		cfg.Consensus.Followers,
+	)
 }
 
 var ConfigSingleton Config
