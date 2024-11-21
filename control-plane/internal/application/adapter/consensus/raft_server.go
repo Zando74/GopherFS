@@ -128,6 +128,7 @@ func (rs *RaftServer) GetInstance() *raft.Raft {
 }
 
 func (rs *RaftServer) Reinitialize() {
+	rs.raft.Shutdown()
 	rs.raft = StartRaftCluster()
 }
 

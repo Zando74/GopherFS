@@ -23,14 +23,21 @@ func main() {
 	log.Info(logger.ConfigLoadedMessage, cfg)
 
 	leaderElectionChannel := make(chan raft.Observation)
+	failHeartbeatChannel := make(chan raft.Observation)
 
 	go func() {
 		observerLeaderElected := consensus.OnLeaderElection(leaderElectionChannel, cfg.Consensus.NodeId)
+		OnFailHeartBeatChannel := consensus.OnFailHeartBeatChannel(failHeartbeatChannel, cfg.Consensus.NodeId)
 		raftsrv.RegisterObserver(observerLeaderElected)
+		raftsrv.RegisterObserver(OnFailHeartBeatChannel)
 		go func() {
-			<-leaderElectionChannel
-			consensus.LookingForFollowers(raftsrv)
-			controller.OnLeaderElection()
+			select {
+			case <-failHeartbeatChannel:
+				consensus.RaftServerSingleton.Reinitialize()
+			case <-leaderElectionChannel:
+				consensus.LookingForFollowers(raftsrv)
+				controller.OnLeaderElection()
+			}
 		}()
 	}()
 
