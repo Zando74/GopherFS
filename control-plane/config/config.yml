@@ -4,9 +4,24 @@ app:
 
 consensus:
   node_id: "control-plane-1"
-  followers: []
   raft_port: 1111
   raft_dir: "/tmp/raft"
+  candidates: []
+  leader: true
+
+kafka:
+  brokers: ["kafka:9092"]
+  topic_file_chunk_save: "emit-file-chunk-save"
+  topic_file_chunk_read: "emit-file-chunk-read"
+  topic_file_chunk_delete: "emit-file-chunk-delete"
+
+  topic_file_metadata_save: "emit-file-metadata-save"
+  topic_file_metadata_read: "emit-file-metadata-read"
+  topic_file_metadata_delete: "emit-file-metadata-delete"
+
+  topic_file_replication_request_save: "emit-file-replication-request-save"
+  topic_file_replication_request_read: "emit-file-replication-request-read"
+  topic_file_replication_request_delete: "emit-file-replication-request-delete"
 
 log:
   log_level: "debug"

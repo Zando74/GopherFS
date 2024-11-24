@@ -34,6 +34,10 @@ func StartRaftCluster() *raft.Raft {
 	raftConf := raft.DefaultConfig()
 	raftConf.LocalID = raft.ServerID(configInstance.Consensus.NodeId)
 	raftConf.SnapshotThreshold = 1024
+	raftConf.ElectionTimeout = 20 * time.Second
+	raftConf.HeartbeatTimeout = 10 * time.Second
+	raftConf.LeaderLeaseTimeout = 5 * time.Second
+	raftConf.PreVoteDisabled = true
 
 	fsmStore := fsm.NewBadger(badgerDB)
 	store, err := raftboltdb.NewBoltStore(filepath.Join(configInstance.Consensus.RaftDir, "raft.dataRepo"))
@@ -81,38 +85,32 @@ func StartRaftCluster() *raft.Raft {
 
 }
 
-func LookingForFollowers(raftsrv *raft.Raft) {
+func (rs *RaftServer) FetchBadgerDBFromFollower(followerAddress string) error {
+	cfg := config.ConfigSingleton.GetInstance()
+	raftServer := rs.GetInstance()
+
+	followerID := raft.ServerID(followerAddress)
+	follower := raft.ServerAddress(fmt.Sprintf("%s:%d", followerAddress, cfg.Consensus.RaftPort))
+
+	if err := raftServer.AddNonvoter(followerID, follower, 0, 0).Error(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func LookingForCandidates(raftsrv *raft.Raft) {
 	cfg := config.ConfigSingleton.GetInstance()
 	go func() {
-		time.Sleep(5 * time.Second)
-		for _, follower := range cfg.Consensus.Followers {
-			followerID := raft.ServerID(follower)
-			followerAddress := raft.ServerAddress(fmt.Sprintf("%s:%d", follower, cfg.Consensus.RaftPort))
-			if err := raftsrv.AddVoter(followerID, followerAddress, 0, 0).Error(); err != nil {
+		for _, voter := range cfg.Consensus.Candidates {
+			voterID := raft.ServerID(voter)
+			voterAddress := raft.ServerAddress(fmt.Sprintf("%s:%d", voter, cfg.Consensus.RaftPort))
+
+			if err := raftsrv.AddVoter(voterID, voterAddress, 0, 0).Error(); err != nil {
 				logger.LoggerSingleton.GetInstance().Errorf("failed to add voter: %v", err)
 			}
 		}
 	}()
-}
-
-func MonitorLeader(raftsrv *raft.Raft) {
-	leaderCh := raftsrv.LeaderCh()
-	for {
-		select {
-		case isLeader := <-leaderCh:
-			if isLeader {
-				logger.LoggerSingleton.GetInstance().Info("Node has become the leader")
-			} else {
-				logger.LoggerSingleton.GetInstance().Info("Node has lost leadership, triggering re-election")
-				raftsrv.LeadershipTransfer()
-			}
-		case <-time.After(5 * time.Second):
-			if raftsrv.Leader() == raft.ServerAddress("") {
-				logger.LoggerSingleton.GetInstance().Info("Leader is not reachable, triggering re-election")
-				RaftServerSingleton.Reinitialize()
-			}
-		}
-	}
 }
 
 type RaftServer struct {
@@ -120,16 +118,15 @@ type RaftServer struct {
 	raft *raft.Raft
 }
 
+func (rs *RaftServer) ReinstateRaftCluster() {
+	rs.raft = StartRaftCluster()
+}
+
 func (rs *RaftServer) GetInstance() *raft.Raft {
 	rs.once.Do(func() {
 		rs.raft = StartRaftCluster()
 	})
 	return rs.raft
-}
-
-func (rs *RaftServer) Reinitialize() {
-	rs.raft.Shutdown()
-	rs.raft = StartRaftCluster()
 }
 
 var RaftServerSingleton RaftServer

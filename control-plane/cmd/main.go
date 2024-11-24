@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/Zando74/GopherFS/control-plane/config"
@@ -23,25 +24,24 @@ func main() {
 	log.Info(logger.ConfigLoadedMessage, cfg)
 
 	leaderElectionChannel := make(chan raft.Observation)
-	failHeartbeatChannel := make(chan raft.Observation)
+	once := sync.Once{}
 
 	go func() {
 		observerLeaderElected := consensus.OnLeaderElection(leaderElectionChannel, cfg.Consensus.NodeId)
-		OnFailHeartBeatChannel := consensus.OnFailHeartBeatChannel(failHeartbeatChannel, cfg.Consensus.NodeId)
 		raftsrv.RegisterObserver(observerLeaderElected)
-		raftsrv.RegisterObserver(OnFailHeartBeatChannel)
+
 		go func() {
-			select {
-			case <-failHeartbeatChannel:
-				consensus.RaftServerSingleton.Reinitialize()
-			case <-leaderElectionChannel:
-				consensus.LookingForFollowers(raftsrv)
+			for range leaderElectionChannel {
+				if cfg.Consensus.Leader {
+					once.Do(func() {
+						consensus.LookingForCandidates(raftsrv)
+					})
+				}
 				controller.OnLeaderElection()
+				controller.RecoverPendingSagas()
 			}
 		}()
 	}()
-
-	go consensus.MonitorLeader(raftsrv)
 
 	controller.Run()
 
@@ -52,5 +52,6 @@ func main() {
 	badgerDB.Close()
 	raftsrv.Shutdown().Error()
 	controller.Shutdown()
+	os.Exit(0)
 
 }

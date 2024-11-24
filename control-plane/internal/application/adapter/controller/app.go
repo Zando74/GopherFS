@@ -13,12 +13,13 @@ import (
 )
 
 var (
-	cfg                           = config.ConfigSingleton.GetInstance()
-	fileChunkRepositoryImpl       = &repository.FileChunkRepository{}
-	fileMetadataRepositoryImpl    = &repository.FileMetadataRepository{}
-	fileReplicationRequestImpl    = &repository.FileReplicationRequestRepository{}
-	sagaInformationRepositoryImpl = repository.NewSagaInformationRepository()
-	log                           = logger.LoggerSingleton.GetInstance()
+	cfg                                = config.ConfigSingleton.GetInstance()
+	fileChunkRepositoryImpl            = repository.NewFileChunkRepository()
+	fileMetadataRepositoryImpl         = repository.NewFileMetadataRepository()
+	fileReplicationRequestImpl         = repository.NewFileReplicationRequestRepository()
+	sagaInformationRepositoryImpl      = repository.NewSagaInformationRepository()
+	log                                = logger.LoggerSingleton.GetInstance()
+	processPendingSagaAtInitController = NewProcessPendingSagaAtInitController()
 )
 
 type Controller struct {
@@ -34,8 +35,10 @@ func (c *Controller) Shutdown() {
 func (c *Controller) OnLeaderElection() {
 	c.IsLeader = true
 	logger.LoggerSingleton.GetInstance().Info("Check pending saga")
-	ProcessPendingSagaAtInitController := &ProcessPendingSagaAtInitController{}
-	ProcessPendingSagaAtInitController.Run()
+}
+
+func (c *Controller) RecoverPendingSagas() {
+	processPendingSagaAtInitController.Run()
 }
 
 func (c *Controller) Run() {

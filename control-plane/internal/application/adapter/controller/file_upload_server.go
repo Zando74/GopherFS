@@ -19,14 +19,15 @@ type FileUploaderver struct {
 
 func (fs *FileUploaderver) executeSplitFileStreamUseCase(
 	filename string,
+	fileID string,
 	fileBatchID uint32,
 	batch []byte,
 ) {
 	fs.wg.Add(1)
-	go func(filename string, fileBatchID uint32, batch []byte) {
+	go func(filename string, fileID string, fileBatchID uint32, batch []byte) {
 		defer fs.wg.Done()
-		fs.splitBatchToChunkUseCase.Execute(filename, fileBatchID, batch)
-	}(filename, fileBatchID, batch)
+		fs.splitBatchToChunkUseCase.Execute(filename, fileID, fileBatchID, batch)
+	}(filename, fileID, fileBatchID, batch)
 }
 
 func (fs *FileUploaderver) UploadFile(stream grpc.FileUploadService_UploadFileServer) error {
@@ -34,6 +35,7 @@ func (fs *FileUploaderver) UploadFile(stream grpc.FileUploadService_UploadFileSe
 	var fileSize uint32 = 0
 	var batchCpt uint32 = 0
 	filename := ""
+	fileID := uuid.New().String()
 	var buffer []byte
 	var uploadSagaCoordinator *coordinator.UploadSagaCoordinator
 	for {
@@ -46,7 +48,7 @@ func (fs *FileUploaderver) UploadFile(stream grpc.FileUploadService_UploadFileSe
 				fileMetadataRepositoryImpl,
 				fileReplicationRequestImpl,
 				sagaInformationRepositoryImpl,
-				uuid.New().String(), // generate a new UUID for the ID
+				fileID, // generate a new UUID for the ID
 				filename,
 			)
 			fs.splitBatchToChunkUseCase = usecase.SplitBatchToChunkUseCase{
@@ -61,7 +63,7 @@ func (fs *FileUploaderver) UploadFile(stream grpc.FileUploadService_UploadFileSe
 
 		if err == io.EOF {
 			if len(buffer) > 0 {
-				fs.executeSplitFileStreamUseCase(filename, batchCpt, buffer)
+				fs.executeSplitFileStreamUseCase(filename, fileID, batchCpt, buffer)
 				fileSize += uint32(len(buffer))
 			}
 			break
@@ -80,7 +82,7 @@ func (fs *FileUploaderver) UploadFile(stream grpc.FileUploadService_UploadFileSe
 			continue
 		}
 
-		fs.executeSplitFileStreamUseCase(filename, batchCpt, buffer)
+		fs.executeSplitFileStreamUseCase(filename, fileID, batchCpt, buffer)
 
 		fileSize += uint32(len(buffer))
 		batchCpt++

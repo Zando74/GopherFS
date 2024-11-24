@@ -54,7 +54,7 @@ func TestStartFileUploadSaga(t *testing.T) {
 		batch := data[start:end]
 
 		// Process the batch
-		err := splitBatchToChunkUseCase.Execute("test1", uint32(i), batch)
+		err := splitBatchToChunkUseCase.Execute("test1", "test1", uint32(i), batch)
 
 		if err != nil {
 			t.Errorf("Error processing batch %d: %v", i, err)
@@ -124,7 +124,7 @@ func TestAbortedUploadSagaRecovery(t *testing.T) {
 		batch := data[start:end]
 
 		// Process the batch
-		splitBatchToChunkUseCase.Execute("test2", uint32(i), batch)
+		splitBatchToChunkUseCase.Execute("test2", "test2", uint32(i), batch)
 		// Verify that the batch was processed correctly
 	}
 	uploadSagaCoordinator.StartWaitingForConfirmations()
@@ -196,7 +196,7 @@ func TestAbortedFileMetadataStepRecovery(t *testing.T) {
 		batch := data[start:end]
 
 		// Process the batch
-		splitBatchToChunkUseCase.Execute("test3", uint32(i), batch)
+		splitBatchToChunkUseCase.Execute("test3", "test3", uint32(i), batch)
 		// Verify that the batch was processed correctly
 	}
 	uploadSagaCoordinator.StartWaitingForConfirmations()
@@ -251,7 +251,7 @@ func TestAbortedFileReplicationStepRecovery(t *testing.T) {
 		batch := data[start:end]
 
 		// Process the batch
-		splitBatchToChunkUseCase.Execute("test4", uint32(i), batch)
+		splitBatchToChunkUseCase.Execute("test4", "test4", uint32(i), batch)
 		// Verify that the batch was processed correctly
 	}
 	uploadSagaCoordinator.StartWaitingForConfirmations()

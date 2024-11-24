@@ -8,12 +8,17 @@ type ProcessPendingSagaAtInitController struct {
 	LookingForPendingSagaAtInitUseCase usecase.LookingForPendingSagaAtInitUseCase
 }
 
-func (p *ProcessPendingSagaAtInitController) Run() {
-	p.LookingForPendingSagaAtInitUseCase = usecase.LookingForPendingSagaAtInitUseCase{
-		FileChunkRepository:       fileChunkRepositoryImpl,
-		FileMetadataRepository:    fileMetadataRepositoryImpl,
-		FileReplicationRepository: fileReplicationRequestImpl,
-		SagaInformationRepository: sagaInformationRepositoryImpl,
+func NewProcessPendingSagaAtInitController() *ProcessPendingSagaAtInitController {
+	return &ProcessPendingSagaAtInitController{
+		LookingForPendingSagaAtInitUseCase: usecase.LookingForPendingSagaAtInitUseCase{
+			FileChunkRepository:       fileChunkRepositoryImpl,
+			FileMetadataRepository:    fileMetadataRepositoryImpl,
+			FileReplicationRepository: fileReplicationRequestImpl,
+			SagaInformationRepository: sagaInformationRepositoryImpl,
+		},
 	}
+}
+
+func (p *ProcessPendingSagaAtInitController) Run() {
 	p.LookingForPendingSagaAtInitUseCase.Execute()
 }

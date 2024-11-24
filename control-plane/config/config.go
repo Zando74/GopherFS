@@ -17,6 +17,7 @@ type (
 		instance    *Config
 		App         `yaml:"app"`
 		Consensus   `yaml:"consensus"`
+		Kafka       `yaml:"kafka"`
 		GRPC        `yaml:"grpc"`
 		FileStorage `yaml:"file_storage"`
 		Log         `yaml:"log"`
@@ -28,10 +29,24 @@ type (
 	}
 
 	Consensus struct {
-		NodeId    string   `yaml:"node_id" env:"NODE_ID"`
-		Followers []string `yaml:"followers" env:"FOLLOWERS"`
-		RaftPort  uint16   `yaml:"raft_port"`
-		RaftDir   string   `yaml:"raft_dir"`
+		NodeId     string   `yaml:"node_id" env:"NODE_ID"`
+		Candidates []string `yaml:"Candidates" env:"CANDIDATES"`
+		Leader     bool     `yaml:"leader" env:"LEADER"`
+		RaftPort   uint16   `yaml:"raft_port"`
+		RaftDir    string   `yaml:"raft_dir"`
+	}
+
+	Kafka struct {
+		Brokers                           []string `yaml:"brokers"`
+		TopicFileChunkSave                string   `yaml:"topic_file_chunk_save"`
+		TopicFileChunkRead                string   `yaml:"topic_file_chunk_read"`
+		TopicFileChunkDelete              string   `yaml:"topic_file_chunk_delete"`
+		TopicFileMetadataSave             string   `yaml:"topic_file_metadata_save"`
+		TopicFileMetadataRead             string   `yaml:"topic_file_metadata_read"`
+		TopicFileMetadataDelete           string   `yaml:"topic_file_metadata_delete"`
+		TopicFileReplicationRequestSave   string   `yaml:"topic_file_replication_request_save"`
+		TopicFileReplicationRequestRead   string   `yaml:"topic_file_replication_request_read"`
+		TopicFileReplicationRequestDelete string   `yaml:"topic_file_replication_request_delete"`
 	}
 
 	GRPC struct {
@@ -88,13 +103,14 @@ func (cfg *Config) GetInstance() *Config {
 }
 
 func (cfg *Config) String() string {
-	return fmt.Sprintf("App: %s, Version: %s, GRPC Port: %s, Chunk Size (MB): %d, Node ID: %s, followers: %v",
+	return fmt.Sprintf("App: %s, Version: %s, GRPC Port: %s, Chunk Size (MB): %d, Node ID: %s, Candidates: %v, leader: %v",
 		cfg.App.Name,
 		cfg.App.Version,
 		cfg.GRPC.Port,
 		cfg.FileStorage.Chunk_size,
 		cfg.Consensus.NodeId,
-		cfg.Consensus.Followers,
+		cfg.Consensus.Candidates,
+		cfg.Consensus.Leader,
 	)
 }
 

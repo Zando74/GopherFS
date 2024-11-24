@@ -42,6 +42,7 @@ func (f *FileChunkSaveConfirmation) ProcessChunk(fileChunk entity.FileChunk) err
 		})
 
 	if err != nil {
+		logger.LoggerSingleton.GetInstance().Error(err)
 		return err
 	}
 

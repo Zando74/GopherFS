@@ -11,12 +11,10 @@ import (
 	"github.com/hashicorp/raft"
 )
 
-// badgerFSM raft.FSM implementation using badgerDB
 type badgerFSM struct {
 	db *badger.DB
 }
 
-// get fetch data from badgerDB
 func (b badgerFSM) get(key string) (interface{}, error) {
 	var keyByte = []byte(key)
 	var data interface{}
@@ -52,7 +50,6 @@ func (b badgerFSM) get(key string) (interface{}, error) {
 	return data, err
 }
 
-// set store data to badgerDB
 func (b badgerFSM) set(key string, value interface{}) error {
 	var data = make([]byte, 0)
 	data, err := json.Marshal(value)
@@ -76,7 +73,6 @@ func (b badgerFSM) set(key string, value interface{}) error {
 	return err
 }
 
-// delete remove data from badgerDB
 func (b badgerFSM) delete(key string) error {
 	var keyByte = []byte(key)
 
@@ -91,10 +87,6 @@ func (b badgerFSM) delete(key string) error {
 	return txn.Commit()
 }
 
-// Apply log is invoked once a log entry is committed.
-// It returns a value which will be made available in the
-// ApplyFuture returned by Raft.Apply method if that
-// method was called on the same Raft node as the FSM.
 func (b badgerFSM) Apply(log *raft.Log) interface{} {
 	if log.Type != raft.LogCommand {
 		_, _ = fmt.Fprintf(os.Stderr, "not raft log command type\n")
@@ -124,17 +116,12 @@ func (b badgerFSM) Apply(log *raft.Log) interface{} {
 	}
 }
 
-// Snapshot will be called during make snapshot.
-// Snapshot is used to support log compaction.
-// No need to call snapshot since it already persisted in disk (using BadgerDB) when raft calling Apply function.
+
 func (b badgerFSM) Snapshot() (raft.FSMSnapshot, error) {
 	return newSnapshotNoop()
 }
 
-// Restore is used to restore an FSM from a Snapshot. It is not called
-// concurrently with any other command. The FSM must discard all previous
-// state.
-// Restore will update all data in BadgerDB
+
 func (b badgerFSM) Restore(rClose io.ReadCloser) error {
 	defer func() {
 		if err := rClose.Close(); err != nil {
@@ -162,7 +149,6 @@ func (b badgerFSM) Restore(rClose io.ReadCloser) error {
 		totalRestored++
 	}
 
-	// read closing bracket
 	_, err := decoder.Token()
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stdout, "[END RESTORE] error %s\n", err.Error())
@@ -173,7 +159,7 @@ func (b badgerFSM) Restore(rClose io.ReadCloser) error {
 	return nil
 }
 
-// NewBadger raft.FSM implementation using badgerDB
+
 func NewBadger(badgerDB *badger.DB) raft.FSM {
 	return &badgerFSM{
 		db: badgerDB,

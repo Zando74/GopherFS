@@ -16,6 +16,7 @@ type SplitBatchToChunkUseCase struct {
 
 func (s *SplitBatchToChunkUseCase) Execute(
 	filename string,
+	fileID string,
 	fileBatchID uint32,
 	batch []byte,
 ) error {
@@ -42,7 +43,7 @@ func (s *SplitBatchToChunkUseCase) Execute(
 			filechunk, err := s.FileChunkFactory.CreateFileChunk(factory.FileChunkInput{
 				Filename:       filename,
 				SequenceNumber: fmt.Sprintf("%d-%d", fileBatchID, chunkID),
-				StableContext:  fmt.Sprintf("%d-%d", fileBatchID, chunkID),
+				StableContext:  fileID,
 				ChunkData:      chunk,
 			})
 

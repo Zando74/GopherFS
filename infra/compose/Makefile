@@ -1,5 +1,10 @@
 start_cluster:
-	docker-compose -f ./compose.dev.yml up --build -d control-plane-1
+	docker-compose -f ./compose.dev.yml up --build -d \
+	control-plane-1 control-plane-2 control-plane-3 \
+	storage-service \
+	metadata-service \
+	replication-service \
+	kafka
 stop_cluster:
 	docker-compose -f ./compose.dev.yml down
 

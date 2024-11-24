@@ -5,7 +5,6 @@ import (
 )
 
 func OnLeaderElection(leaderElectionChannel chan raft.Observation, nodeId string) *raft.Observer {
-
 	return raft.NewObserver(
 		leaderElectionChannel,
 		false,
@@ -16,20 +15,6 @@ func OnLeaderElection(leaderElectionChannel chan raft.Observation, nodeId string
 				}
 
 				return true
-			}
-			return false
-		},
-	)
-}
-
-func OnFailHeartBeatChannel(failHeartBeatChannel chan raft.Observation, nodeId string) *raft.Observer {
-
-	return raft.NewObserver(
-		failHeartBeatChannel,
-		false,
-		func(o *raft.Observation) bool {
-			if _, ok := o.Data.(raft.FailedHeartbeatObservation); ok {
-				failHeartBeatChannel <- *o
 			}
 			return false
 		},
