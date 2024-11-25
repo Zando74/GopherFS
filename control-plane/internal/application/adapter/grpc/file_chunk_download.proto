@@ -1,0 +1,18 @@
+syntax = "proto3";
+package proto;
+option go_package = "./;grpc";
+
+message FileChunkDownloadRequest {
+    string file_id = 1;
+    uint32 sequence_number = 2;
+}
+
+message FileChunkDownloadResponse {
+    string file_id = 1;
+    uint32 sequence_number = 2;
+    bytes chunk = 3;
+  }
+
+service FileChunkDownloadService {
+    rpc DownloadChunk (stream FileChunkDownloadRequest) returns (FileChunkDownloadResponse);
+}

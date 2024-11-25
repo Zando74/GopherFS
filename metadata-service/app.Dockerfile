@@ -17,8 +17,8 @@ FROM alpine:latest
 WORKDIR /app/
 
 COPY --from=builder /app/main .
-#COPY --from=builder /app/config/config.yml .
+COPY --from=builder /app/config/config.yml .
 
-#ENV CONFIG_PATH=./config.yml
+ENV CONFIG_PATH=./config.yml
 
 CMD ["./main"]

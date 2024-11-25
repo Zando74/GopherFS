@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/Zando74/GopherFS/control-plane/config"
@@ -17,13 +16,12 @@ type SplitBatchToChunkUseCase struct {
 func (s *SplitBatchToChunkUseCase) Execute(
 	filename string,
 	fileID string,
-	fileBatchID uint32,
+	batchCpt *int,
 	batch []byte,
 ) error {
 
 	config := config.ConfigSingleton.GetInstance()
 	chunkSize := config.FileStorage.Chunk_size
-	chunkCpt := 0
 	var errorThrown error
 
 	wg := &sync.WaitGroup{}
@@ -35,14 +33,14 @@ func (s *SplitBatchToChunkUseCase) Execute(
 		}
 
 		wg.Add(1)
-		go func(chunkID int, index uint32, currentChunksize uint32) {
+		go func(chunkID *int, index uint32, currentChunksize uint32) {
 			defer wg.Done()
 
 			chunk := batch[index : index+currentChunksize]
 
 			filechunk, err := s.FileChunkFactory.CreateFileChunk(factory.FileChunkInput{
 				Filename:       filename,
-				SequenceNumber: fmt.Sprintf("%d-%d", fileBatchID, chunkID),
+				SequenceNumber: *batchCpt,
 				StableContext:  fileID,
 				ChunkData:      chunk,
 			})
@@ -61,9 +59,8 @@ func (s *SplitBatchToChunkUseCase) Execute(
 				return
 			}
 
-		}(chunkCpt, i, chunkSize)
-		chunkCpt++
-
+		}(batchCpt, i, chunkSize)
+		*batchCpt++
 	}
 	wg.Wait()
 

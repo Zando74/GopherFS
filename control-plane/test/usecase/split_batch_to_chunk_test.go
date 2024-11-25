@@ -22,6 +22,7 @@ func TestSplitFileStreamUseCase(t *testing.T) {
 	}
 	startFileStreamSagaUC.Execute()
 
+	cpt := 0
 	// Read the data in 1MB batches
 	for i := 0; i < 10; i++ {
 		start := i * 1024 * 1024
@@ -29,7 +30,7 @@ func TestSplitFileStreamUseCase(t *testing.T) {
 		batch := data[start:end]
 
 		// Process the batch
-		err := splitBatchToChunkUseCase.Execute("test", "test", uint32(i), batch)
+		err := splitBatchToChunkUseCase.Execute("test", "test", &cpt, batch)
 
 		if err != nil {
 			t.Errorf("Error processing batch %d: %v", i, err)
@@ -67,8 +68,9 @@ func TestSplitFileStreamUseCase_EmptyBatch(t *testing.T) {
 	}
 	startFileStreamSagaUC.Execute()
 
+	cpt := 0
 	// Process the empty batch
-	err := splitBatchToChunkUseCase.Execute("test_empty", "test_empty", 0, data)
+	err := splitBatchToChunkUseCase.Execute("test_empty", "test_empty", &cpt, data)
 
 	if err != nil {
 		t.Errorf("Error processing empty batch: %v", err)

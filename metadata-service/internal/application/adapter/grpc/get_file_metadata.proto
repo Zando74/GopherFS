@@ -1,0 +1,29 @@
+syntax = "proto3";
+package proto;
+option go_package = "./;grpc";
+
+message GetFileMetadataRequest {
+    string file_id = 1;
+}
+
+message GetFileMetadataResponse {
+    string file_id = 1;
+    string file_name = 2;
+    uint32 file_size = 3;
+    repeated ChunkLocations chunk_locations = 4;
+  }
+
+message ChunkLocations {
+    string chunk_id = 1;
+    uint32 sequence_number = 2;
+    Location primary_location = 3;
+    repeated Location secondary_locations = 4;
+}
+
+message Location {
+    string storage_id = 1;
+}
+
+service FileMetadataService {
+    rpc GetFileMetadata (stream GetFileMetadataRequest) returns (GetFileMetadataResponse);
+}

@@ -101,6 +101,12 @@ func (f *FileChunkSaveConfirmation) Transaction() error {
 
 func (f *FileChunkSaveConfirmation) Rollback() error {
 	log.Info(logger.RecoveringFileUploadSagaStepSagaMessage, saga_entity.FileChunkSave, f.FileMetadata.FileID)
+	for {
+		if f.NoPendingConfirmation() {
+			break
+		}
+	}
+
 	f.FileChunkSaver.DeleteAllFilesChunks(f.FileMetadata.FileID)
 	f.SagaInformationLogger.MarkSagaStepAsFailed(f.FileMetadata.FileID)
 	return nil

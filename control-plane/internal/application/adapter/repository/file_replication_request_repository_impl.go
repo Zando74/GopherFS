@@ -36,6 +36,7 @@ func NewFileReplicationRequestRepository() *FileReplicationRequestRepository {
 			MaxAttempts: 3,
 			MaxBytes:    100000000, // 100 MB
 		}),
+		cfg:             cfg,
 		successHandlers: make(map[string]func()),
 	}
 	go frr.ListenForReplicationSuccess()

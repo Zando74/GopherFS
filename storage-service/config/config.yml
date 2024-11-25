@@ -1,0 +1,19 @@
+app:
+  name: "gopherFS-storage-service"
+  version: "0.0.1"
+
+kafka:
+  brokers: ["kafka:9092"]
+  topic_file_chunk_save: "emit-file-chunk-save"
+  topic_file_chunk_read: "emit-file-chunk-read"
+  topic_file_chunk_delete: "emit-file-chunk-delete"
+
+storage:
+  base_directory: "/data/storage-service"
+  service_name: "storage-service-1"
+
+log:
+  log_level: "debug"
+
+grpc:
+  port: ":50050"

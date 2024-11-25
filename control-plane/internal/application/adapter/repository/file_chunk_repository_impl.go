@@ -24,7 +24,6 @@ func NewFileChunkRepository() *FileChunkRepository {
 	fcr := &FileChunkRepository{
 		producer: &kafka.Writer{
 			Addr:        kafka.TCP(cfg.Kafka.Brokers...),
-			Topic:       cfg.Kafka.TopicFileChunkSave,
 			Balancer:    &kafka.Hash{},
 			MaxAttempts: 3,
 			BatchSize:   256,
@@ -78,6 +77,7 @@ func (fcr *FileChunkRepository) SaveFileChunk(chunk *entity.FileChunk, onSuccess
 
 	err = fcr.producer.WriteMessages(context.Background(),
 		kafka.Message{
+			Topic: fcr.cfg.Kafka.TopicFileChunkSave,
 			Key:   []byte(chunk.ChunkID),
 			Value: message,
 		},

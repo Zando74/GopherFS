@@ -44,6 +44,9 @@ services:
     build:
       context: ../../storage-service
       dockerfile: app.Dockerfile
+    environment:
+      - BASE_DIRECTORY=/data/storage-service
+      - SERVICE_NAME=storage-service
     depends_on:
       - kafka
 
@@ -53,6 +56,7 @@ services:
       dockerfile: app.Dockerfile
     depends_on:
       - kafka
+      - etcd
 
   replication-service:
     build:
@@ -83,4 +87,11 @@ services:
       - PARTITIONS=10
     depends_on:
       - zookeeper
+
+  etcd:
+    image: bitnami/etcd:latest
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+      
 

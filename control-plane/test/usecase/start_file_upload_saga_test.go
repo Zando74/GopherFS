@@ -47,6 +47,7 @@ func TestStartFileUploadSaga(t *testing.T) {
 	}()
 	wg.Add(1)
 
+	cpt := 0
 	// Read the data in 1MB batches
 	for i := 0; i < 10; i++ {
 		start := i * 1024 * 1024
@@ -54,7 +55,7 @@ func TestStartFileUploadSaga(t *testing.T) {
 		batch := data[start:end]
 
 		// Process the batch
-		err := splitBatchToChunkUseCase.Execute("test1", "test1", uint32(i), batch)
+		err := splitBatchToChunkUseCase.Execute("test1", "test1", &cpt, batch)
 
 		if err != nil {
 			t.Errorf("Error processing batch %d: %v", i, err)
@@ -117,6 +118,7 @@ func TestAbortedUploadSagaRecovery(t *testing.T) {
 	}()
 	wg.Add(1)
 
+	cpt := 0
 	// Read the data in 1MB batches
 	for i := 0; i < 10; i++ {
 		start := i * 1024 * 1024
@@ -124,7 +126,7 @@ func TestAbortedUploadSagaRecovery(t *testing.T) {
 		batch := data[start:end]
 
 		// Process the batch
-		splitBatchToChunkUseCase.Execute("test2", "test2", uint32(i), batch)
+		splitBatchToChunkUseCase.Execute("test2", "test2", &cpt, batch)
 		// Verify that the batch was processed correctly
 	}
 	uploadSagaCoordinator.StartWaitingForConfirmations()
@@ -189,6 +191,7 @@ func TestAbortedFileMetadataStepRecovery(t *testing.T) {
 	}()
 	wg.Add(1)
 
+	cpt := 0
 	// Read the data in 1MB batches
 	for i := 0; i < 10; i++ {
 		start := i * 1024 * 1024
@@ -196,7 +199,7 @@ func TestAbortedFileMetadataStepRecovery(t *testing.T) {
 		batch := data[start:end]
 
 		// Process the batch
-		splitBatchToChunkUseCase.Execute("test3", "test3", uint32(i), batch)
+		splitBatchToChunkUseCase.Execute("test3", "test3", &cpt, batch)
 		// Verify that the batch was processed correctly
 	}
 	uploadSagaCoordinator.StartWaitingForConfirmations()
@@ -244,6 +247,7 @@ func TestAbortedFileReplicationStepRecovery(t *testing.T) {
 	}()
 	wg.Add(1)
 
+	cpt := 0
 	// Read the data in 1MB batches
 	for i := 0; i < 10; i++ {
 		start := i * 1024 * 1024
@@ -251,7 +255,7 @@ func TestAbortedFileReplicationStepRecovery(t *testing.T) {
 		batch := data[start:end]
 
 		// Process the batch
-		splitBatchToChunkUseCase.Execute("test4", "test4", uint32(i), batch)
+		splitBatchToChunkUseCase.Execute("test4", "test4", &cpt, batch)
 		// Verify that the batch was processed correctly
 	}
 	uploadSagaCoordinator.StartWaitingForConfirmations()

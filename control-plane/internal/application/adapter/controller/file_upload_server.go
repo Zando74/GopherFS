@@ -20,11 +20,11 @@ type FileUploaderver struct {
 func (fs *FileUploaderver) executeSplitFileStreamUseCase(
 	filename string,
 	fileID string,
-	fileBatchID uint32,
+	fileBatchID *int,
 	batch []byte,
 ) {
 	fs.wg.Add(1)
-	go func(filename string, fileID string, fileBatchID uint32, batch []byte) {
+	go func(filename string, fileID string, fileBatchID *int, batch []byte) {
 		defer fs.wg.Done()
 		fs.splitBatchToChunkUseCase.Execute(filename, fileID, fileBatchID, batch)
 	}(filename, fileID, fileBatchID, batch)
@@ -33,7 +33,7 @@ func (fs *FileUploaderver) executeSplitFileStreamUseCase(
 func (fs *FileUploaderver) UploadFile(stream grpc.FileUploadService_UploadFileServer) error {
 
 	var fileSize uint32 = 0
-	var batchCpt uint32 = 0
+	var batchCpt int = 0
 	filename := ""
 	fileID := uuid.New().String()
 	var buffer []byte
@@ -63,7 +63,7 @@ func (fs *FileUploaderver) UploadFile(stream grpc.FileUploadService_UploadFileSe
 
 		if err == io.EOF {
 			if len(buffer) > 0 {
-				fs.executeSplitFileStreamUseCase(filename, fileID, batchCpt, buffer)
+				fs.executeSplitFileStreamUseCase(filename, fileID, &batchCpt, buffer)
 				fileSize += uint32(len(buffer))
 			}
 			break
@@ -82,10 +82,9 @@ func (fs *FileUploaderver) UploadFile(stream grpc.FileUploadService_UploadFileSe
 			continue
 		}
 
-		fs.executeSplitFileStreamUseCase(filename, fileID, batchCpt, buffer)
+		fs.executeSplitFileStreamUseCase(filename, fileID, &batchCpt, buffer)
 
 		fileSize += uint32(len(buffer))
-		batchCpt++
 		buffer = []byte{}
 	}
 	fs.wg.Wait()

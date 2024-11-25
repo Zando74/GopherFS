@@ -36,6 +36,7 @@ func NewFileMetadataRepository() *FileMetadataRepository {
 			MaxAttempts: 3,
 			MaxBytes:    100000000, // 100 MB
 		}),
+		cfg:                         cfg,
 		metadataSaveSuccessHandlers: make(map[string]func()),
 	}
 	go fmr.ListenForMetadataSaveSuccess()

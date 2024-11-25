@@ -7,7 +7,7 @@ import (
 
 type FileChunkInput struct {
 	Filename       string
-	SequenceNumber string
+	SequenceNumber int
 	StableContext  string
 	ChunkData      []byte
 }
@@ -21,7 +21,7 @@ func (fc FileChunkFactory) CreateFileChunk(input FileChunkInput) (*entity.FileCh
 	}
 	chunkHash := value_object.NewChunkHash(*chunk, input.StableContext)
 	return &entity.FileChunk{
-		FileID:         input.Filename,
+		FileID:         input.StableContext,
 		SequenceNumber: input.SequenceNumber,
 		ChunkID:        chunkHash,
 		ChunkData:      *chunk,
